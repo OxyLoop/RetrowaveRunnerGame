@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import GameCanvas from './components/GameCanvas';
 import { GameCanvas as RunnerGameCanvas } from './components/runner';
+import CrowdRunnerCanvas from './components/crowd_runner/CrowdRunnerCanvas';
 import HUD from './components/HUD';
 import UpgradeShop from './components/UpgradeShop';
 import { GamePhase, Boss } from './types';
@@ -17,6 +18,7 @@ declare global {
 
 const App: React.FC = () => {
   const [phase, setPhase] = useState<GamePhase>(GamePhase.MENU);
+  const [isCrowdMode, setIsCrowdMode] = useState(false);
   const [score, setScore] = useState(0);
   const [bossInfo, setBossInfo] = useState<Boss | null>(null);
   const [currentRunnerLevel, setCurrentRunnerLevel] = useState(1);
@@ -111,9 +113,31 @@ const App: React.FC = () => {
                   <span className="text-2xl">🔫</span>
                   <div className="text-left">
                     <div className="text-lg">SHOOTER MODE</div>
-                    <div className="text-xs opacity-70">Düşmanlar, Bosslar, Silahlar</div>
+                    <div className="text-xs text-orange-200 mt-1 pl-2">Neon Tabanca • Sonsuz Düşmanlar</div>
                   </div>
                 </div>
+              </button>
+
+              {/* CROWD RUNNER SHOOTER */}
+              <button
+                onClick={() => setIsCrowdMode(true)}
+                className="group relative bg-black/60 border border-cyan-500/50 p-4 hover:bg-cyan-900/40 transition-all duration-300 text-left overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-transparent translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500"></div>
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="p-2 bg-cyan-500/20 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                    <Play className="w-6 h-6 text-cyan-400" />
+                  </div>
+                  <div>
+                    <div className="font-black italic text-xl text-white tracking-wider group-hover:text-cyan-300 transition-colors">
+                      CROWD SHOOTER
+                    </div>
+                    <div className="text-[10px] text-cyan-300/70 font-mono tracking-widest uppercase">
+                      YENİ • Ordu + Ateş
+                    </div>
+                  </div>
+                </div>
+                <div className="text-xs text-cyan-200 mt-1 pl-2">Düşman Vur • Silah Topla</div>
               </button>
 
               {/* Hyper Casual Mode */}
@@ -338,6 +362,11 @@ const App: React.FC = () => {
     }
   };
 
+  // CROWD RUNNER MODE - Separate full-screen game
+  if (isCrowdMode) {
+    return <CrowdRunnerCanvas onBack={() => setIsCrowdMode(false)} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#0f0518] flex items-center justify-center p-4 font-sans overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900 via-[#0f0518] to-black">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
@@ -438,6 +467,23 @@ const App: React.FC = () => {
 
         {/* Phase Overlays */}
         {getPhaseUI()}
+
+        {/* CSS Visual Effects - Vignette */}
+        <div
+          className="absolute inset-0 pointer-events-none z-30"
+          style={{
+            background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)',
+          }}
+        />
+
+        {/* CSS Visual Effects - CRT Scanlines */}
+        <div
+          className="absolute inset-0 pointer-events-none z-30 opacity-[0.03]"
+          style={{
+            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)',
+            backgroundSize: '100% 4px',
+          }}
+        />
       </div>
 
       {/* Controls hint */}
@@ -449,3 +495,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+

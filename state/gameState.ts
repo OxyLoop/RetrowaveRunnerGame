@@ -6,7 +6,8 @@ import {
     Boss,
     Enemy,
     Projectile,
-    Particle
+    Particle,
+    FloatingText
 } from '../types';
 import { createWeapon } from '../types/weapons';
 import { getLevelConfig, getTotalLevels } from '../types/levels';
@@ -29,6 +30,8 @@ const createInitialPlayer = (): Player => ({
         createWeapon(WeaponType.LASER),
         createWeapon(WeaponType.SHOTGUN),
         createWeapon(WeaponType.CANNON),
+        createWeapon(WeaponType.RAILGUN),
+        createWeapon(WeaponType.MINIGUN),
     ],
     lastShot: 0,
     isInvulnerable: false,
@@ -82,6 +85,8 @@ const createInitialState = (levelId: number = 1): GameState => {
         screenShake: 0,
         gameMode: 'SHOOTER',
         hyperCasual: undefined,
+        combo: 0,
+        comboTimer: 0,
     };
 };
 
@@ -155,6 +160,20 @@ export const addParticle = (particle: Particle) => {
     gameStateRef.current.particles.push(particle);
 };
 
+export const addFloatingText = (text: string, x: number, y: number, z: number, color: string = '#ffffff') => {
+    gameStateRef.current.floatingTexts.push({
+        id: Math.random(),
+        text,
+        x,
+        y: y + 1, // Start slightly above
+        z,
+        color,
+        life: 1.0,
+        maxLife: 1.0,
+        vy: 2.0, // Float up speed
+    });
+};
+
 export const damagePlayer = (damage: number) => {
     const player = gameStateRef.current.player;
 
@@ -168,6 +187,9 @@ export const damagePlayer = (damage: number) => {
     }
 
     player.health -= damage;
+
+    // Reset combo on hit
+    gameStateRef.current.combo = 0;
 
     if (player.health <= 0) {
         player.health = 0;
@@ -188,13 +210,66 @@ export const damageEnemy = (enemyId: number, damage: number): boolean => {
 
     enemy.health -= damage;
 
+    // Floating combat text
+    const isCrit = Math.random() < 0.2; // 20% crit chance simulation for visual
+    const displayDamage = Math.ceil(damage * (isCrit ? 1.5 : 1));
+    // Actually apply crit damage if we want gameplay mechanics, but for now just visual juice
+    if (isCrit) enemy.health -= Math.ceil(damage * 0.5);
+
+    addFloatingText(
+        isCrit ? `CRIT ${displayDamage}!` : `${Math.ceil(damage)}`,
+        enemy.x + (Math.random() - 0.5),
+        enemy.y + 1,
+        enemy.z,
+        isCrit ? '#ff00ff' : '#ffffff'
+    );
+
     if (enemy.health <= 0) {
         // Award points
         gameStateRef.current.player.currency += enemy.points;
         gameStateRef.current.score += enemy.points;
 
+        // DEATH EXPLOSION PARTICLES
+        const particleColors = ['#ff00ff', '#00ffff', '#ffff00', '#ff0088'];
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const speed = 5 + Math.random() * 10;
+            addParticle({
+                id: Math.random(),
+                x: enemy.x,
+                y: enemy.y + 0.5,
+                z: enemy.z,
+                vx: Math.cos(angle) * speed,
+                vy: 3 + Math.random() * 5,
+                vz: Math.sin(angle) * speed,
+                color: particleColors[Math.floor(Math.random() * particleColors.length)],
+                size: 0.2 + Math.random() * 0.3,
+                life: 1.0,
+                maxLife: 1.0,
+            });
+        }
+
+        // Screen shake on kill
+        gameStateRef.current.screenShake = Math.min(1, gameStateRef.current.screenShake + 0.2);
+
         // Add rage (ultimate meter)
         gameStateRef.current.player.rage = Math.min(100, (gameStateRef.current.player.rage || 0) + 8);
+
+        // Increase combo
+        gameStateRef.current.combo += 1;
+        gameStateRef.current.comboTimer = 3.0; // 3 seconds to keep combo
+
+        // Combo bonus points
+        if (gameStateRef.current.combo > 1) {
+            gameStateRef.current.score += 10 * gameStateRef.current.combo;
+            addFloatingText(
+                `x${gameStateRef.current.combo}`,
+                enemy.x,
+                enemy.y + 2,
+                enemy.z,
+                '#ffff00'
+            );
+        }
 
         // Update high score
         if (gameStateRef.current.score > gameStateRef.current.highScore) {

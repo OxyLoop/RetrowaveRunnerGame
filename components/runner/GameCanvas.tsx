@@ -423,6 +423,7 @@ const PalmAvenue = ({
             <instancedMesh
                 ref={trunkRef}
                 args={[undefined as any, undefined as any, totalPalms]}
+                frustumCulled={false}
             >
                 <cylinderGeometry args={[0.22, 0.48, 6.8, 8]} />
                 <meshStandardMaterial
@@ -437,6 +438,7 @@ const PalmAvenue = ({
             <instancedMesh
                 ref={leafRef}
                 args={[undefined as any, undefined as any, totalLeaves]}
+                frustumCulled={false}
             >
                 <planeGeometry args={[4.8, 1.25]} />
                 <meshStandardMaterial

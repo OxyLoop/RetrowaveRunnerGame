@@ -15,7 +15,9 @@ export enum WeaponType {
     PISTOL = 'PISTOL',
     LASER = 'LASER',
     SHOTGUN = 'SHOTGUN',
-    CANNON = 'CANNON'
+    CANNON = 'CANNON',
+    RAILGUN = 'RAILGUN',
+    MINIGUN = 'MINIGUN'
 }
 
 export interface Weapon {
@@ -62,7 +64,9 @@ export enum EnemyType {
     TANK = 'TANK',
     GLITCH = 'GLITCH',
     BOSS = 'BOSS',
-    ASTEROID = 'ASTEROID'
+    ASTEROID = 'ASTEROID',
+    PHANTOM = 'PHANTOM',
+    BOMBER = 'BOMBER'
 }
 
 export interface Enemy {
@@ -245,6 +249,8 @@ export interface GameState {
         gatesCleared: number;
         isFinished: boolean;
     };
+    combo: number;
+    comboTimer: number;
 }
 
 export interface FloatingText {

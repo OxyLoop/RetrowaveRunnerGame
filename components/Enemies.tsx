@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Box, Sphere, Text, Octahedron } from '@react-three/drei';
+import { Box, Sphere, Text, Octahedron, Cylinder } from '@react-three/drei';
 import * as THREE from 'three';
 import { gameStateRef, addProjectile, damagePlayer } from '../state/gameState';
 import { GamePhase, Enemy, EnemyType, Projectile } from '../types';
@@ -86,7 +86,12 @@ const Enemies: React.FC = () => {
             const dist = Math.sqrt(dx * dx + dz * dz);
 
             if (dist < 2) {
-                damagePlayer(enemy.damage);
+                // BOMBER explodes on contact causing extra damage
+                if (enemy.type === EnemyType.BOMBER) {
+                    damagePlayer(enemy.damage + 30); // Extra explosion damage
+                } else {
+                    damagePlayer(enemy.damage);
+                }
                 enemy.isActive = false;
             }
         });
@@ -128,6 +133,17 @@ const EnemyMesh: React.FC<{ enemy: Enemy }> = ({ enemy }) => {
         } else if (enemy.type === EnemyType.ASTEROID) {
             groupRef.current.rotation.x += delta * 0.5;
             groupRef.current.rotation.y += delta * 0.3;
+        } else if (enemy.type === EnemyType.PHANTOM) {
+            // Phantom floats and phases in/out
+            groupRef.current.position.y = 1 + Math.sin(time * 3) * 0.5;
+            // Random phase flicker
+            if (Math.random() < 0.02) {
+                groupRef.current.visible = !groupRef.current.visible;
+            }
+        } else if (enemy.type === EnemyType.BOMBER) {
+            // Bomber wobbles menacingly
+            groupRef.current.rotation.z = Math.sin(time * 8) * 0.15;
+            groupRef.current.position.y = 0.5 + Math.sin(time * 2) * 0.1;
         }
     });
 
@@ -138,6 +154,8 @@ const EnemyMesh: React.FC<{ enemy: Enemy }> = ({ enemy }) => {
             case EnemyType.GLITCH: return COLORS.NEON_GREEN;
             case EnemyType.ELITE: return COLORS.NEON_MAGENTA;
             case EnemyType.ASTEROID: return '#666666';
+            case EnemyType.PHANTOM: return '#88ffff';
+            case EnemyType.BOMBER: return '#ff6600';
             default: return COLORS.NEON_RED;
         }
     };
@@ -173,9 +191,177 @@ const EnemyMesh: React.FC<{ enemy: Enemy }> = ({ enemy }) => {
         );
     }
 
+    // PHANTOM - Ghost-like enemy
+    if (enemy.type === EnemyType.PHANTOM) {
+        const distToPlayer = Math.abs(enemy.z - gameStateRef.current.distance);
+        const visibility = Math.max(0.2, 1 - distToPlayer / 50); // More visible when close
+
+        return (
+            <group ref={groupRef} position={[enemy.x, enemy.y, enemy.z]}>
+                {/* Main ghost body */}
+                <Sphere args={[0.8, 12, 12]}>
+                    <meshStandardMaterial
+                        color="#88ffff"
+                        emissive="#00ffff"
+                        emissiveIntensity={0.8}
+                        transparent
+                        opacity={visibility}
+                        metalness={0.2}
+                        roughness={0.8}
+                        toneMapped={false}
+                    />
+                </Sphere>
+                {/* Inner core */}
+                <Sphere args={[0.4, 8, 8]}>
+                    <meshBasicMaterial
+                        color="#ffffff"
+                        transparent
+                        opacity={visibility * 0.6}
+                        toneMapped={false}
+                    />
+                </Sphere>
+                {/* Ghost trails */}
+                {[1, 2, 3].map((i) => (
+                    <Sphere key={i} args={[0.3, 6, 6]} position={[0, -0.3 * i, 0.2 * i]}>
+                        <meshBasicMaterial
+                            color="#88ffff"
+                            transparent
+                            opacity={visibility * (0.4 - i * 0.1)}
+                            toneMapped={false}
+                        />
+                    </Sphere>
+                ))}
+                {/* Health bar */}
+                <Box args={[1.5, 0.12, 0.08]} position={[0, 1.5, 0]}>
+                    <meshBasicMaterial color="#005555" />
+                </Box>
+                <Box args={[1.5 * healthPercent, 0.12, 0.1]} position={[(healthPercent - 1) * 0.75, 1.5, 0]}>
+                    <meshBasicMaterial color="#88ffff" toneMapped={false} />
+                </Box>
+            </group>
+        );
+    }
+
+    // BOMBER - Explosive enemy
+    if (enemy.type === EnemyType.BOMBER) {
+        return (
+            <group ref={groupRef} position={[enemy.x, enemy.y, enemy.z]}>
+                {/* Main bomb body */}
+                <Sphere args={[1, 12, 12]}>
+                    <meshStandardMaterial
+                        color="#111111"
+                        emissive="#ff6600"
+                        emissiveIntensity={damaged ? 2.5 : 1.2}
+                        metalness={0.8}
+                        roughness={0.2}
+                        toneMapped={false}
+                    />
+                </Sphere>
+                {/* Warning stripes effect */}
+                <Box args={[0.6, 0.15, 1.2]} position={[0, 0.3, 0]}>
+                    <meshBasicMaterial color="#ffff00" toneMapped={false} />
+                </Box>
+                <Box args={[0.6, 0.15, 1.2]} position={[0, -0.3, 0]}>
+                    <meshBasicMaterial color="#ffff00" toneMapped={false} />
+                </Box>
+                {/* Fuse on top */}
+                <Box args={[0.1, 0.5, 0.1]} position={[0, 1.2, 0]}>
+                    <meshStandardMaterial color="#333333" />
+                </Box>
+                {/* Fuse spark */}
+                <Sphere args={[0.15, 6, 6]} position={[0, 1.5, 0]}>
+                    <meshBasicMaterial color="#ff3300" toneMapped={false} />
+                </Sphere>
+                {/* Point light for glow */}
+                <pointLight position={[0, 0, 0]} color="#ff6600" intensity={2} distance={5} />
+                {/* Health bar */}
+                <Box args={[1.5, 0.12, 0.08]} position={[0, 2, 0]}>
+                    <meshBasicMaterial color="#663300" />
+                </Box>
+                <Box args={[1.5 * healthPercent, 0.12, 0.1]} position={[(healthPercent - 1) * 0.75, 2, 0]}>
+                    <meshBasicMaterial color="#ff6600" toneMapped={false} />
+                </Box>
+            </group>
+        );
+    }
+
+    // DRONE - Quadcopter style
+    if (enemy.type === EnemyType.DRONE) {
+        return (
+            <group ref={groupRef} position={[enemy.x, enemy.y, enemy.z]}>
+                {/* Center Core */}
+                <Sphere args={[0.3, 8, 8]}>
+                    <meshStandardMaterial color="#222" emissive={color} emissiveIntensity={0.5} />
+                </Sphere>
+                {/* Propeller Arms */}
+                <Box args={[1.2, 0.1, 0.1]} rotation={[0, Math.PI / 4, 0]}>
+                    <meshStandardMaterial color="#444" />
+                </Box>
+                <Box args={[1.2, 0.1, 0.1]} rotation={[0, -Math.PI / 4, 0]}>
+                    <meshStandardMaterial color="#444" />
+                </Box>
+                {/* Rotors */}
+                {[0, 1, 2, 3].map(i => {
+                    const angle = (Math.PI / 2) * i + Math.PI / 4;
+                    const r = 0.5;
+                    return (
+                        <Cylinder key={i} args={[0.2, 0.2, 0.05, 8]} position={[Math.cos(angle) * r, 0.1, Math.sin(angle) * r]}>
+                            <meshBasicMaterial color="#666" />
+                        </Cylinder>
+                    );
+                })}
+                {/* Eye */}
+                <Sphere args={[0.15, 8, 8]} position={[0, 0, 0.25]}>
+                    <meshBasicMaterial color={COLORS.NEON_RED} toneMapped={false} />
+                </Sphere>
+                {/* Health bar */}
+                <Box args={[1.2, 0.1, 0.1]} position={[0, 0.8, 0]}>
+                    <meshBasicMaterial color="#330000" />
+                </Box>
+                <Box args={[1.2 * healthPercent, 0.1, 0.1]} position={[(healthPercent - 1) * 0.6, 0.8, 0]}>
+                    <meshBasicMaterial color={color} toneMapped={false} />
+                </Box>
+            </group>
+        );
+    }
+
+    // TANK - Tracked Vehicle
+    if (enemy.type === EnemyType.TANK) {
+        return (
+            <group ref={groupRef} position={[enemy.x, enemy.y, enemy.z]}>
+                {/* Body */}
+                <Box args={[1.2, 0.6, 1.4]} position={[0, 0.4, 0]}>
+                    <meshStandardMaterial color="#1a1a1a" roughness={0.8} />
+                </Box>
+                {/* Turret */}
+                <Box args={[0.7, 0.5, 0.8]} position={[0, 0.9, 0]}>
+                    <meshStandardMaterial color="#333" />
+                </Box>
+                {/* Barrel */}
+                <Cylinder args={[0.1, 0.1, 1.2, 8]} rotation={[Math.PI / 2, 0, 0]} position={[0, 0.9, 0.8]}>
+                    <meshStandardMaterial color="#111" />
+                </Cylinder>
+                {/* Tracks */}
+                <Box args={[0.3, 0.4, 1.6]} position={[-0.7, 0.2, 0]}>
+                    <meshStandardMaterial color={color} />
+                </Box>
+                <Box args={[0.3, 0.4, 1.6]} position={[0.7, 0.2, 0]}>
+                    <meshStandardMaterial color={color} />
+                </Box>
+                {/* Health bar */}
+                <Box args={[1.5, 0.15, 0.1]} position={[0, 1.6, 0]}>
+                    <meshBasicMaterial color="#330000" />
+                </Box>
+                <Box args={[1.5 * healthPercent, 0.15, 0.1]} position={[(healthPercent - 1) * 0.75, 1.6, 0]}>
+                    <meshBasicMaterial color={color} toneMapped={false} />
+                </Box>
+            </group>
+        );
+    }
+
+    // Default / GLITCH / ELITE (keep box for now or update later)
     return (
         <group ref={groupRef} position={[enemy.x, enemy.y, enemy.z]}>
-            {/* Main body */}
             <Box args={[1.2, 0.8, 1.2]}>
                 <meshStandardMaterial
                     color="#111111"
@@ -186,19 +372,6 @@ const EnemyMesh: React.FC<{ enemy: Enemy }> = ({ enemy }) => {
                     toneMapped={false}
                 />
             </Box>
-
-            {/* Glowing core */}
-            <Sphere args={[0.4, 8, 8]}>
-                <meshBasicMaterial color={color} toneMapped={false} />
-            </Sphere>
-
-            {/* Wireframe when damaged */}
-            {damaged && (
-                <Box args={[1.4, 1, 1.4]}>
-                    <meshBasicMaterial color="#ff0000" wireframe toneMapped={false} />
-                </Box>
-            )}
-
             {/* Health bar */}
             <Box args={[1.5, 0.12, 0.08]} position={[0, 1.2, 0]}>
                 <meshBasicMaterial color="#330000" />

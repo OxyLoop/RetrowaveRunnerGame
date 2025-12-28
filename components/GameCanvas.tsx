@@ -4,9 +4,12 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Stars, Sparkles, Text, Box, Float } from '@react-three/drei';
 import * as THREE from 'three';
 import Landscape from './Landscape';
+import UpgradeShop from './UpgradeShop';
+import FloatingTexts from './FloatingTexts';
 import Player from './Player';
 import Enemies from './Enemies';
 import Projectiles from './Projectiles';
+import Particles from './Particles';
 import PowerUps from './PowerUps';
 import BossFight from './BossFight';
 import FloatingTextRenderer from './FloatingText';
@@ -185,6 +188,76 @@ const PalmAvenue = ({ perSide = 44, spacing = 16 }: { perSide?: number; spacing?
         <planeGeometry args={[4.8, 1.25]} />
         <meshStandardMaterial color="#001a14" emissive="#00ffd0" emissiveIntensity={1.15} transparent opacity={0.95} side={THREE.DoubleSide} toneMapped={false} />
       </instancedMesh>
+    </group>
+  );
+};
+
+// === CYBERPUNK CITY SKYLINE ===
+const CyberpunkSkyline = ({ buildingCount = 40 }: { buildingCount?: number }) => {
+  const buildingsRef = useRef<THREE.InstancedMesh>(null);
+  const windowsRef = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  // Generate random building data once
+  const buildingData = useMemo(() => {
+    const data = [];
+    for (let i = 0; i < buildingCount; i++) {
+      const side = i < buildingCount / 2 ? -1 : 1;
+      const x = side * (TRACK_WIDTH / 2 + 25 + Math.random() * 40);
+      const z = -50 - i * 25 - Math.random() * 20;
+      const height = 15 + Math.random() * 45;
+      const width = 4 + Math.random() * 8;
+      const depth = 4 + Math.random() * 6;
+      const hue = Math.random() > 0.5 ? '#ff00ff' : '#00ffff';
+      data.push({ x, z, height, width, depth, hue });
+    }
+    return data;
+  }, [buildingCount]);
+
+  useEffect(() => {
+    if (!buildingsRef.current) return;
+
+    buildingData.forEach((b, i) => {
+      dummy.position.set(b.x, b.height / 2, b.z);
+      dummy.scale.set(b.width, b.height, b.depth);
+      dummy.updateMatrix();
+      buildingsRef.current!.setMatrixAt(i, dummy.matrix);
+    });
+    buildingsRef.current.instanceMatrix.needsUpdate = true;
+  }, [buildingData, dummy]);
+
+  return (
+    <group>
+      {/* Building silhouettes */}
+      <instancedMesh ref={buildingsRef} args={[undefined as any, undefined as any, buildingCount]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial
+          color="#0a0015"
+          emissive="#220033"
+          emissiveIntensity={0.1}
+          roughness={0.9}
+        />
+      </instancedMesh>
+
+      {/* Neon edge lighting on buildings */}
+      {buildingData.slice(0, 20).map((b, i) => (
+        <group key={i} position={[b.x, b.height, b.z]}>
+          {/* Top edge glow */}
+          <mesh position={[0, 0, 0]}>
+            <boxGeometry args={[b.width + 0.3, 0.3, b.depth + 0.3]} />
+            <meshBasicMaterial color={b.hue} toneMapped={false} transparent opacity={0.8} />
+          </mesh>
+          {/* Vertical edge lines */}
+          <mesh position={[-b.width / 2, -b.height / 2, b.depth / 2]}>
+            <boxGeometry args={[0.2, b.height, 0.2]} />
+            <meshBasicMaterial color={b.hue} toneMapped={false} transparent opacity={0.5} />
+          </mesh>
+          <mesh position={[b.width / 2, -b.height / 2, b.depth / 2]}>
+            <boxGeometry args={[0.2, b.height, 0.2]} />
+            <meshBasicMaterial color={b.hue} toneMapped={false} transparent opacity={0.5} />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 };
@@ -418,6 +491,7 @@ const GameScene: React.FC<GameCanvasProps> = (props) => {
       <CameraController orientation={props.orientation} />
 
       <PalmAvenue perSide={40} spacing={20} />
+      <CyberpunkSkyline buildingCount={30} />
       <Landscape speed={gs.phase === GamePhase.RUNNING ? 1.0 : 0.0} />
       <RetroRoad
         width={14}
@@ -448,7 +522,10 @@ const GameScene: React.FC<GameCanvasProps> = (props) => {
           <Enemies />
           <Projectiles />
           <PowerUps />
-          <BossFight />
+          <FloatingTexts />
+          <Particles />
+          <EndermanBoss />
+          {/* Boss Fight */}
         </>
       )}
       <FloatingTextRenderer />

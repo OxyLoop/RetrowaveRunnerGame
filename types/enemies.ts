@@ -52,6 +52,27 @@ export const ENEMY_CONFIGS: Record<EnemyType, Omit<Enemy, 'id' | 'x' | 'y' | 'z'
         canShoot: false,
         shootCooldown: 0,
     },
+    [EnemyType.PHANTOM]: {
+        type: EnemyType.PHANTOM,
+        health: 50,
+        maxHealth: 50,
+        damage: 35,
+        speed: 18,              // Very fast
+        points: 40,
+        canShoot: false,        // Melee attacker
+        shootCooldown: 0,
+    },
+    [EnemyType.BOMBER]: {
+        type: EnemyType.BOMBER,
+        health: 150,
+        maxHealth: 150,
+        damage: 25,             // Contact damage
+        speed: 10,
+        points: 35,
+        canShoot: false,
+        shootCooldown: 0,
+        // Note: Explosion damage is handled separately in Enemies.tsx
+    },
 };
 
 // Create an enemy instance

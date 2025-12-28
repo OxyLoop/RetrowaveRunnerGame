@@ -13,6 +13,17 @@ const HUD: React.FC<HUDProps> = ({ onPause }) => {
     const player = gs.player;
     const weapon = getCurrentWeapon();
     const stats = weapon ? getWeaponStats(weapon) : null;
+    const [combo, setCombo] = React.useState(0);
+
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            const currentCombo = gameStateRef.current.combo || 0;
+            if (currentCombo !== combo) {
+                setCombo(currentCombo);
+            }
+        }, 100);
+        return () => clearInterval(interval);
+    }, [combo]);
 
     if (gs.phase !== GamePhase.RUNNING && gs.phase !== GamePhase.BOSS_FIGHT) {
         return null;
@@ -113,6 +124,30 @@ const HUD: React.FC<HUDProps> = ({ onPause }) => {
                 </div>
             </div>
 
+
+            {/* COMBO INDICATOR */}
+            {
+                combo > 1 && (
+                    <div className="absolute top-24 left-1/2 transform -translate-x-1/2 flex flex-col items-center animate-bounce">
+                        <div className="text-4xl font-black italic text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]"
+                            style={{ transform: `scale(${1 + Math.min(combo * 0.1, 1)})` }}>
+                            COMBO x{combo}
+                        </div>
+                        {combo >= 5 && (
+                            <div className="text-fuchsia-400 font-bold tracking-widest text-sm animate-pulse">
+                                {combo >= 15 ? 'GODLIKE!!!' : combo >= 10 ? 'UNSTOPPABLE!!' : 'RAMPAGE!'}
+                            </div>
+                        )}
+                        <div className="w-32 h-1 bg-gray-800 mt-1">
+                            <div
+                                className="h-full bg-yellow-400 transition-all duration-100"
+                                style={{ width: `${(gameStateRef.current.comboTimer / 3) * 100}%` }}
+                            />
+                        </div>
+                    </div>
+                )
+            }
+
             {/* Top Right - Score & Currency */}
             <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
                 <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm px-4 py-2 border-r-4 border-fuchsia-500">
@@ -171,32 +206,34 @@ const HUD: React.FC<HUDProps> = ({ onPause }) => {
             </div>
 
             {/* Boss Health Bar (when fighting boss) */}
-            {gs.phase === GamePhase.BOSS_FIGHT && gs.boss.isActive && (
-                <div className="absolute top-20 left-1/2 transform -translate-x-1/2 w-64">
-                    <div className="bg-black/80 backdrop-blur-sm p-3 border-2 border-fuchsia-500">
-                        <div className="text-center mb-2">
-                            <span className="text-fuchsia-400 font-bold text-lg">{gs.boss.name}</span>
-                        </div>
-                        <div className="w-full h-4 bg-gray-900 border border-fuchsia-900">
-                            <div
-                                className="h-full bg-gradient-to-r from-fuchsia-600 to-red-500 transition-all duration-300"
-                                style={{ width: `${(gs.boss.currentHp / gs.boss.maxHp) * 100}%` }}
-                            />
-                        </div>
-                        <div className="text-center mt-1">
-                            <span className="text-fuchsia-300 text-sm font-mono">
-                                {Math.ceil(gs.boss.currentHp)} / {gs.boss.maxHp}
-                            </span>
+            {
+                gs.phase === GamePhase.BOSS_FIGHT && gs.boss.isActive && (
+                    <div className="absolute top-20 left-1/2 transform -translate-x-1/2 w-64">
+                        <div className="bg-black/80 backdrop-blur-sm p-3 border-2 border-fuchsia-500">
+                            <div className="text-center mb-2">
+                                <span className="text-fuchsia-400 font-bold text-lg">{gs.boss.name}</span>
+                            </div>
+                            <div className="w-full h-4 bg-gray-900 border border-fuchsia-900">
+                                <div
+                                    className="h-full bg-gradient-to-r from-fuchsia-600 to-red-500 transition-all duration-300"
+                                    style={{ width: `${(gs.boss.currentHp / gs.boss.maxHp) * 100}%` }}
+                                />
+                            </div>
+                            <div className="text-center mt-1">
+                                <span className="text-fuchsia-300 text-sm font-mono">
+                                    {Math.ceil(gs.boss.currentHp)} / {gs.boss.maxHp}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Mobile Controls Hint */}
             <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 text-gray-500 text-xs font-mono">
                 TAP left/right to move • TAP center to shoot
             </div>
-        </div>
+        </div >
     );
 };
 

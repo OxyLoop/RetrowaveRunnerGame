@@ -62,6 +62,36 @@ export const WEAPONS: Record<WeaponType, Omit<Weapon, 'upgrades'>> = {
         explosive: true,
         unlocked: false,
     },
+    [WeaponType.RAILGUN]: {
+        type: WeaponType.RAILGUN,
+        name: 'Rail Gun',
+        damage: 250,           // Very high damage
+        fireRate: 0.5,         // Slow but deadly
+        projectileSpeed: 300,  // Super fast
+        projectileColor: '#00ff88',
+        projectileSize: 0.25,
+        ammo: 20,
+        maxAmmo: 20,
+        spread: 0,
+        piercing: true,        // Goes through enemies
+        explosive: false,
+        unlocked: false,
+    },
+    [WeaponType.MINIGUN]: {
+        type: WeaponType.MINIGUN,
+        name: 'Neon Minigun',
+        damage: 8,             // Low damage per bullet
+        fireRate: 30,          // 30 bullets per second!
+        projectileSpeed: 100,
+        projectileColor: '#ffff00',
+        projectileSize: 0.1,
+        ammo: 500,
+        maxAmmo: 500,
+        spread: 0.15,          // Some spread
+        piercing: false,
+        explosive: false,
+        unlocked: false,
+    },
 };
 
 // Create a weapon instance with upgrade tracking

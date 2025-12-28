@@ -1,103 +1,214 @@
 // @ts-nocheck
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Box, Text } from '@react-three/drei';
+import { Box, Sphere, Text, Octahedron, Torus, Cylinder } from '@react-three/drei';
 import * as THREE from 'three';
-import { gameStateRef } from '../state/gameState';
+import { gameStateRef, damagePlayer, addProjectile } from '../state/gameState';
+import { GamePhase, Projectile } from '../types';
+import { ENEMY_PROJECTILE_SPEED, ENEMY_PROJECTILE_DAMAGE, COLORS } from '../constants';
 
 const EndermanBoss: React.FC = () => {
     const groupRef = useRef<THREE.Group>(null);
-    const [time, setTime] = useState(0);
+    const coreRef = useRef<THREE.Mesh>(null);
+    const ringsRef = useRef<THREE.Group>(null);
+    const [lastAttack, setLastAttack] = useState(0);
+
+    // Floating shards for "Cybernetic Entity" look
+    const shards = useMemo(() => {
+        return Array.from({ length: 8 }).map((_, i) => ({
+            id: i,
+            offset: [
+                (Math.random() - 0.5) * 4,
+                (Math.random() - 0.5) * 4,
+                (Math.random() - 0.5) * 2
+            ],
+            scale: Math.random() * 0.5 + 0.5,
+            speed: Math.random() * 0.5 + 0.2
+        }));
+    }, []);
 
     useFrame((state) => {
         const gs = gameStateRef.current;
-        const phase = gs.phase;
 
-        // Visual logic based on health
-        setTime(state.clock.getElapsedTime());
+        if (!gs.boss.isActive || gs.phase !== GamePhase.BOSS_FIGHT) return;
 
+        const time = state.clock.getElapsedTime();
         const boss = gs.boss;
-        if (!gameStateRef.current.boss.isActive) return;
+        const hpPercent = boss.currentHp / boss.maxHp;
 
+        // Position Logic
         if (groupRef.current) {
-            // Update Z position from game state!
             groupRef.current.position.z = boss.z;
 
-            // "Teleport" glitch effect when hit
-            const healthPercent = boss.currentHp / boss.maxHp;
-            const glitch = healthPercent < 0.5 ? Math.random() < 0.1 : false;
+            // Hover animation
+            groupRef.current.position.y = 3 + Math.sin(time) * 0.5;
 
-            groupRef.current.position.x = glitch ? (Math.random() - 0.5) * 5 : 0;
-            groupRef.current.position.y = 3 + Math.sin(time * 1.5) * 0.5;
-
-            // Look angry (vibrate)
-            if (healthPercent < 0.3) {
-                groupRef.current.position.x += (Math.random() - 0.5) * 0.2;
+            // Phase Behaviors
+            if (hpPercent < 0.25) { // Phase 3: RAGE
+                // Violent shake
+                groupRef.current.position.x = (Math.random() - 0.5) * 1.5;
+                groupRef.current.position.y += (Math.random() - 0.5) * 0.5;
+                // Red glowing color shift happening in render below
+            } else if (hpPercent < 0.5) { // Phase 2: Teleporting
+                // Teleport logic handled in game loop, but visual glitch here:
+                if (Math.random() < 0.05) {
+                    groupRef.current.position.x = (Math.random() - 0.5) * 8;
+                } else {
+                    // Smooth lerp back to center-ish
+                    groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, 0, 0.1);
+                }
+            } else { // Phase 1: Idle sway
+                groupRef.current.position.x = Math.sin(time * 0.5) * 3;
             }
+        }
+
+        // Ring Rotation
+        if (ringsRef.current) {
+            ringsRef.current.rotation.x = time * 0.5;
+            ringsRef.current.rotation.y = time * 0.3;
+
+            // Spin faster in rage mode
+            if (hpPercent < 0.25) {
+                ringsRef.current.rotation.z += 0.1;
+                ringsRef.current.rotation.x += 0.05;
+            }
+        }
+
+        // Core Pulse
+        if (coreRef.current) {
+            const scale = 1 + Math.sin(time * 3) * 0.2;
+            coreRef.current.scale.set(scale, scale, scale);
+        }
+
+        // ATTACK LOGIC
+        const now = Date.now();
+        let attackCooldown = 1500;
+        if (hpPercent < 0.5) attackCooldown = 1000;
+        if (hpPercent < 0.25) attackCooldown = 600;
+
+        if (now - lastAttack > attackCooldown) {
+            setLastAttack(now);
+
+            // Shoot projectile at player
+            const projectileParams: Projectile = {
+                id: Math.random(), // Temporary ID logic
+                x: groupRef.current!.position.x,
+                y: groupRef.current!.position.y,
+                z: groupRef.current!.position.z + 2,
+                vx: (gs.player.x - groupRef.current!.position.x) * 0.5,
+                vy: (gs.player.y - groupRef.current!.position.y) * 0.5,
+                vz: ENEMY_PROJECTILE_SPEED + (hpPercent < 0.5 ? 10 : 0),
+                damage: 15 + (hpPercent < 0.25 ? 10 : 0),
+                color: hpPercent < 0.25 ? '#ff0000' : '#ff00ff',
+                size: 0.8,
+                piercing: false,
+                explosive: hpPercent < 0.25,
+                fromEnemy: true,
+            };
+            addProjectile(projectileParams);
         }
     });
 
-    // Animation constants
-    const armAngle = Math.sin(time * 2) * 0.1;
+    const getBossColor = () => {
+        const hp = gameStateRef.current.boss.currentHp / gameStateRef.current.boss.maxHp;
+        if (hp < 0.25) return '#ff0000'; // Rage red
+        if (hp < 0.5) return '#ff8800'; // Warning orange
+        return '#a020f0'; // Default purple
+    };
+
+    const mainColor = getBossColor();
 
     return (
         <group ref={groupRef}>
-            {/* SCALE UP - It's a BOSS */}
-            <group scale={[3, 3, 3]}>
+            {/* CENTRAL CORE */}
+            <Sphere ref={coreRef} args={[1.5, 16, 16]}>
+                <meshStandardMaterial
+                    color="#000000"
+                    emissive={mainColor}
+                    emissiveIntensity={2}
+                    roughness={0.2}
+                    metalness={0.8}
+                />
+            </Sphere>
 
-                {/* HEAD */}
-                <Box args={[0.8, 0.8, 0.8]} position={[0, 2.4, 0]}>
-                    <meshStandardMaterial color="#1a1a1a" />
-                </Box>
-
-                {/* EYES - Glowing Purple/Pink */}
-                <Box args={[0.2, 0.1, 0.05]} position={[-0.2, 2.3, 0.41]}>
-                    <meshBasicMaterial color="#ff00ff" />
-                </Box>
-                <Box args={[0.2, 0.1, 0.05]} position={[0.2, 2.3, 0.41]}>
-                    <meshBasicMaterial color="#ff00ff" />
-                </Box>
-
-                {/* TORSO */}
-                <Box args={[0.6, 1.2, 0.4]} position={[0, 1.4, 0]}>
-                    <meshStandardMaterial color="#1a1a1a" />
-                </Box>
-
-                {/* ARMS - Long and thin */}
-                <group position={[-0.4, 1.8, 0]} rotation={[0, 0, armAngle + 0.1]}>
-                    <Box args={[0.2, 1.8, 0.2]} position={[0, -0.8, 0]}>
-                        <meshStandardMaterial color="#1a1a1a" />
-                    </Box>
-                </group>
-                <group position={[0.4, 1.8, 0]} rotation={[0, 0, -armAngle - 0.1]}>
-                    <Box args={[0.2, 1.8, 0.2]} position={[0, -0.8, 0]}>
-                        <meshStandardMaterial color="#1a1a1a" />
-                    </Box>
-                </group>
-
-                {/* LEGS - Long */}
-                <Box args={[0.2, 1.6, 0.2]} position={[-0.15, 0, 0]}>
-                    <meshStandardMaterial color="#1a1a1a" />
-                </Box>
-                <Box args={[0.2, 1.6, 0.2]} position={[0.15, 0, 0]}>
-                    <meshStandardMaterial color="#1a1a1a" />
-                </Box>
-
-                {/* ENDER PARTICLES */}
-                <pointLight position={[0, 2, 1]} color="#ff00ff" intensity={2} distance={5} />
+            {/* ROTATING RINGS */}
+            <group ref={ringsRef}>
+                <Torus args={[2.5, 0.1, 16, 100]} rotation={[1, 0, 0]}>
+                    <meshBasicMaterial color={mainColor} wireframe />
+                </Torus>
+                <Torus args={[2, 0.1, 16, 100]} rotation={[0, 1, 0]}>
+                    <meshBasicMaterial color="#ffffff" wireframe transparent opacity={0.5} />
+                </Torus>
+                <Torus args={[3, 0.1, 16, 100]} rotation={[0, 0, 1]}>
+                    <meshBasicMaterial color={mainColor} wireframe />
+                </Torus>
             </group>
 
-            {/* Boss Name Tag in 3D */}
-            <Text
-                position={[0, 9, 0]}
-                fontSize={1}
-                color="#ff00ff"
-                outlineWidth={0.05}
-                outlineColor="#000000"
-            >
-                ENDER BOSS
-            </Text>
+            {/* FLOATING SHARDS */}
+            {shards.map((shard, i) => (
+                <FloatingShard
+                    key={i}
+                    offset={shard.offset}
+                    color={mainColor}
+                    baseScale={shard.scale}
+                />
+            ))}
+
+            {/* BOSS HP BAR (Visual above head) */}
+            <group position={[0, 4.5, 0]}>
+                <Box args={[6, 0.3, 0.3]}>
+                    <meshBasicMaterial color="#330000" />
+                </Box>
+                <group position={[-3 + (gameStateRef.current.boss.currentHp / gameStateRef.current.boss.maxHp) * 3, 0, 0.1]}>
+                    <Box args={[6 * (gameStateRef.current.boss.currentHp / gameStateRef.current.boss.maxHp), 0.25, 0.1]}>
+                        <meshBasicMaterial color={mainColor} toneMapped={false} />
+                    </Box>
+                </group>
+                <Text
+                    position={[0, 0.8, 0]}
+                    fontSize={0.8}
+                    color={mainColor}
+                    outlineWidth={0.05}
+                    outlineColor="#000000"
+                >
+                    {gameStateRef.current.boss.name || "ENTITY_NULL"}
+                </Text>
+            </group>
+
+            {/* POINT LIGHT */}
+            <pointLight distance={20} intensity={5} color={mainColor} />
         </group>
+    );
+};
+
+// Sub-component for shards
+const FloatingShard = ({ offset, color, baseScale }: { offset: number[], color: string, baseScale: number }) => {
+    const mesh = useRef<THREE.Mesh>(null);
+    const [randomOffset] = useState(Math.random() * 100);
+
+    useFrame((state) => {
+        if (mesh.current) {
+            const t = state.clock.getElapsedTime();
+            mesh.current.position.y = offset[1] + Math.sin(t * 2 + randomOffset) * 0.5;
+            mesh.current.rotation.x = t + randomOffset;
+            mesh.current.rotation.y = t * 0.5 + randomOffset;
+        }
+    });
+
+    return (
+        <Octahedron
+            ref={mesh}
+            args={[baseScale]}
+            position={[offset[0], offset[1], offset[2]]}
+        >
+            <meshStandardMaterial
+                color={color}
+                roughness={0.1}
+                metalness={0.9}
+                emissive={color}
+                emissiveIntensity={0.5}
+            />
+        </Octahedron>
     );
 };
 

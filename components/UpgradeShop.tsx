@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { gameStateRef, startLevelFromShop } from '../state/gameState';
 import { WeaponType, UpgradeType } from '../types';
 import { UPGRADE_COSTS, COLORS } from '../constants';
-import { Zap, Shield, Heart, Gauge, Crosshair, DollarSign } from 'lucide-react';
+import { Zap, Shield, Heart, Gauge, Crosshair, DollarSign, Wind, Target } from 'lucide-react';
 
 interface UpgradeItem {
     id: string;
@@ -35,14 +35,18 @@ const UpgradeShop: React.FC = () => {
             // Unlock option
             const unlockCost = weapon.type === WeaponType.LASER ? UPGRADE_COSTS.UNLOCK_LASER
                 : weapon.type === WeaponType.SHOTGUN ? UPGRADE_COSTS.UNLOCK_SHOTGUN
-                    : UPGRADE_COSTS.UNLOCK_CANNON;
+                    : weapon.type === WeaponType.CANNON ? UPGRADE_COSTS.UNLOCK_CANNON
+                        : weapon.type === WeaponType.RAILGUN ? UPGRADE_COSTS.UNLOCK_RAILGUN
+                            : UPGRADE_COSTS.UNLOCK_MINIGUN;
 
             return [{
                 id: `unlock-${weapon.type}`,
                 type: UpgradeType.UNLOCK_WEAPON,
                 name: `Unlock ${weapon.name}`,
                 description: 'Unlock this weapon',
-                icon: <Crosshair className="w-6 h-6" />,
+                icon: weapon.type === WeaponType.RAILGUN ? <Target className="w-6 h-6" />
+                    : weapon.type === WeaponType.MINIGUN ? <Wind className="w-6 h-6" />
+                        : <Crosshair className="w-6 h-6" />,
                 getCost: () => unlockCost,
                 canPurchase: () => player.currency >= unlockCost,
                 purchase: () => {
