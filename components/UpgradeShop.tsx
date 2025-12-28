@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { gameStateRef, startLevelFromShop } from '../state/gameState';
 import { WeaponType, UpgradeType } from '../types';
 import { UPGRADE_COSTS, COLORS } from '../constants';
@@ -20,10 +20,17 @@ interface UpgradeItem {
 
 const UpgradeShop: React.FC = () => {
     const [selectedCategory, setSelectedCategory] = useState<'weapons' | 'player'>('weapons');
+    const [, forceUpdate] = useState(0);
     const gs = gameStateRef.current;
     const player = gs.player;
 
-    const weaponUpgrades: UpgradeItem[] = player.weapons.flatMap((weapon) => {
+    // Trigger re-render after purchase
+    const handlePurchase = useCallback((purchaseFn: () => void) => {
+        purchaseFn();
+        forceUpdate(prev => prev + 1);
+    }, []);
+
+    const weaponUpgrades: UpgradeItem[] = player.weapons.flatMap((weapon): UpgradeItem[] => {
         if (!weapon.unlocked && weapon.type !== WeaponType.PISTOL) {
             // Unlock option
             const unlockCost = weapon.type === WeaponType.LASER ? UPGRADE_COSTS.UNLOCK_LASER
@@ -202,8 +209,8 @@ const UpgradeShop: React.FC = () => {
                 <button
                     onClick={() => setSelectedCategory('weapons')}
                     className={`px-6 py-2 font-bold text-sm transition-all ${selectedCategory === 'weapons'
-                            ? 'bg-cyan-500 text-black'
-                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                        ? 'bg-cyan-500 text-black'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                         }`}
                 >
                     WEAPONS
@@ -211,8 +218,8 @@ const UpgradeShop: React.FC = () => {
                 <button
                     onClick={() => setSelectedCategory('player')}
                     className={`px-6 py-2 font-bold text-sm transition-all ${selectedCategory === 'player'
-                            ? 'bg-fuchsia-500 text-black'
-                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                        ? 'bg-fuchsia-500 text-black'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                         }`}
                 >
                     PLAYER
@@ -230,7 +237,7 @@ const UpgradeShop: React.FC = () => {
                     return (
                         <button
                             key={upgrade.id}
-                            onClick={() => canBuy && upgrade.purchase()}
+                            onClick={() => canBuy && handlePurchase(upgrade.purchase)}
                             disabled={!canBuy}
                             className={`
                 flex flex-col items-center p-4 border-2 transition-all

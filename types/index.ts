@@ -6,7 +6,8 @@ export enum GamePhase {
     GAME_OVER = 'GAME_OVER',
     VICTORY = 'VICTORY',
     UPGRADE_SHOP = 'UPGRADE_SHOP',
-    LEVEL_COMPLETE = 'LEVEL_COMPLETE'
+    LEVEL_COMPLETE = 'LEVEL_COMPLETE',
+    ENDLESS_RUNNER = 'ENDLESS_RUNNER'
 }
 
 // ===== WEAPONS =====
@@ -238,7 +239,7 @@ export interface GameState {
     score: number;
     highScore: number;
     screenShake: number;
-    gameMode?: 'SHOOTER' | 'HYPER_CASUAL';
+    gameMode?: 'SHOOTER' | 'HYPER_CASUAL' | 'ENDLESS_RUNNER';
     hyperCasual?: {
         soldierCount: number;
         gatesCleared: number;

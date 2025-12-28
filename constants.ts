@@ -46,3 +46,43 @@ export const COLORS = {
     NEON_ORANGE: '#ffaa00',
     BACKGROUND: '#0b0618',
 };
+
+// Runner Mode Levels
+export const RUNNER_LEVELS = [
+    {
+        id: 1,
+        name: "CYBER STREETS",
+        playerSpeed: 20,
+        gateInterval: 45,
+        duration: 60,
+        bossHpMultiplier: 0.8,
+        color: "#00ffff"
+    },
+    {
+        id: 2,
+        name: "DATA NEON",
+        playerSpeed: 24,
+        gateInterval: 40,
+        duration: 60,
+        bossHpMultiplier: 1.0,
+        color: "#ff00ff"
+    },
+    {
+        id: 3,
+        name: "GRID VOID",
+        playerSpeed: 28,
+        gateInterval: 35,
+        duration: 60,
+        bossHpMultiplier: 1.2,
+        color: "#ffff00"
+    },
+    {
+        id: 4,
+        name: "CORE SHUTDOWN",
+        playerSpeed: 32,
+        gateInterval: 30,
+        duration: 60,
+        bossHpMultiplier: 1.5,
+        color: "#ff0000"
+    }
+];

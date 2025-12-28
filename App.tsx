@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import GameCanvas from './components/GameCanvas';
+import { GameCanvas as RunnerGameCanvas } from './components/runner';
 import HUD from './components/HUD';
 import UpgradeShop from './components/UpgradeShop';
 import { GamePhase, Boss } from './types';
@@ -18,6 +19,7 @@ const App: React.FC = () => {
   const [phase, setPhase] = useState<GamePhase>(GamePhase.MENU);
   const [score, setScore] = useState(0);
   const [bossInfo, setBossInfo] = useState<Boss | null>(null);
+  const [currentRunnerLevel, setCurrentRunnerLevel] = useState(1);
 
   type OrientationMode = 'auto' | 'portrait' | 'landscape';
   const [orientation, setOrientation] = useState<OrientationMode>('auto');
@@ -34,7 +36,15 @@ const App: React.FC = () => {
           : 'relative w-screen h-screen overflow-hidden bg-black';
 
   const handleStart = () => {
-    if (window.startGame) {
+    // Check which game mode we're in and call appropriate start function
+    if (gameStateRef.current.gameMode === 'ENDLESS_RUNNER') {
+      setPhase(GamePhase.ENDLESS_RUNNER);
+      setTimeout(() => {
+        if ((window as any).startRunnerGame) {
+          (window as any).startRunnerGame();
+        }
+      }, 100);
+    } else if (window.startGame) {
       window.startGame();
     }
   };
@@ -49,9 +59,13 @@ const App: React.FC = () => {
     setPhase(GamePhase.RUNNING);
   };
 
-  // Sync phase from game state
+  // Sync phase from game state - SKIP for ENDLESS_RUNNER mode
   useEffect(() => {
     const interval = setInterval(() => {
+      // Don't sync from gameStateRef when in ENDLESS_RUNNER mode
+      if (gameStateRef.current.gameMode === 'ENDLESS_RUNNER') {
+        return; // RunnerGameCanvas handles its own phase via callbacks
+      }
       if (gameStateRef.current.phase !== phase) {
         setPhase(gameStateRef.current.phase);
       }
@@ -60,6 +74,14 @@ const App: React.FC = () => {
   }, [phase]);
 
   const getPhaseUI = () => {
+    // ENDLESS_RUNNER mode: don't show menu overlay when game is running
+    if (gameStateRef.current.gameMode === 'ENDLESS_RUNNER' && phase !== GamePhase.MENU) {
+      // Only return null if not explicitly in an end-state
+      if (phase === GamePhase.RUNNING || phase === GamePhase.BOSS_FIGHT || phase === GamePhase.ENDLESS_RUNNER) {
+        return null;
+      }
+    }
+
     switch (phase) {
       case GamePhase.MENU:
         return (
@@ -112,6 +134,30 @@ const App: React.FC = () => {
                   <div className="text-left">
                     <div className="text-lg">HYPER CASUAL</div>
                     <div className="text-xs opacity-70">Matematik Kapıları, Asker Ordusu</div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Endless Runner Mode */}
+              <button
+                onClick={() => {
+                  gameStateRef.current.gameMode = 'ENDLESS_RUNNER';
+                  gameStateRef.current.hyperCasual = undefined;
+                  setPhase(GamePhase.ENDLESS_RUNNER);
+                  // Wait for RunnerGameCanvas to mount and expose startRunnerGame
+                  setTimeout(() => {
+                    if ((window as any).startRunnerGame) {
+                      (window as any).startRunnerGame();
+                    }
+                  }, 100);
+                }}
+                className="group relative px-6 py-4 bg-transparent border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black rounded-sm font-bold transition-all duration-300 hover:shadow-[0_0_30px_rgba(250,204,21,0.6)]"
+              >
+                <div className="flex items-center justify-center gap-3">
+                  <span className="text-2xl">🏃</span>
+                  <div className="text-left">
+                    <div className="text-lg">ENDLESS RUNNER</div>
+                    <div className="text-xs opacity-70">Sonsuz Koşu, Boss Savaşları</div>
                   </div>
                 </div>
               </button>
@@ -195,6 +241,71 @@ const App: React.FC = () => {
         return <UpgradeShop />;
 
       case GamePhase.VICTORY:
+        // Check if this is ENDLESS_RUNNER mode
+        const isRunnerMode = gameStateRef.current.gameMode === 'ENDLESS_RUNNER';
+
+        if (isRunnerMode) {
+          // ENDLESS RUNNER Victory - Level Progression
+          return (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-fuchsia-950/80 text-white z-10 backdrop-blur-md">
+              <h2 className="text-4xl font-black mb-2 text-yellow-300 italic drop-shadow-[0_0_15px_rgba(253,224,71,0.8)]">
+                LEVEL {currentRunnerLevel} TAMAM!
+              </h2>
+              <p className="text-xl mb-6 text-fuchsia-200 uppercase tracking-widest">
+                Boss Yenildi
+              </p>
+              <div className="flex flex-col items-center gap-2 mb-8 bg-black/40 p-6 border border-yellow-500/30">
+                <span className="text-xs uppercase tracking-widest text-yellow-500">Asker Sayısı</span>
+                <span className="text-5xl font-mono font-bold text-yellow-300 drop-shadow-md">
+                  🏃 {score}
+                </span>
+              </div>
+
+              {currentRunnerLevel < 4 ? (
+                <button
+                  onClick={() => {
+                    const nextLevel = currentRunnerLevel + 1;
+                    setCurrentRunnerLevel(nextLevel);
+                    setPhase(GamePhase.ENDLESS_RUNNER);
+                    setTimeout(() => {
+                      if ((window as any).startRunnerGame) {
+                        (window as any).startRunnerGame(nextLevel);
+                      }
+                    }, 100);
+                  }}
+                  className="px-10 py-4 bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white font-bold text-xl hover:from-cyan-400 hover:to-fuchsia-400 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.5)]"
+                >
+                  <Play className="w-6 h-6" />
+                  LEVEL {currentRunnerLevel + 1}'E DEVAM
+                </button>
+              ) : (
+                <div className="text-center">
+                  <h1 className="text-5xl font-bold text-yellow-400 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.8)]">
+                    🏆 ULTIMATE CHAMPION 🏆
+                  </h1>
+                  <p className="text-fuchsia-200 mb-6">Tüm 4 Level Tamamlandı!</p>
+                  <button
+                    onClick={() => {
+                      setCurrentRunnerLevel(1);
+                      setPhase(GamePhase.ENDLESS_RUNNER);
+                      setTimeout(() => {
+                        if ((window as any).startRunnerGame) {
+                          (window as any).startRunnerGame(1);
+                        }
+                      }, 100);
+                    }}
+                    className="px-8 py-3 bg-yellow-400 text-black font-bold hover:bg-yellow-300 transition-all"
+                  >
+                    <RotateCcw className="inline mr-2" />
+                    BAŞTAN OYNA
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // Original SHOOTER mode victory
         return (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-fuchsia-950/80 text-white z-10 backdrop-blur-md">
             <h2 className="text-6xl font-black mb-4 text-yellow-300 drop-shadow-[0_0_15px_rgba(253,224,71,0.8)] italic">
@@ -232,16 +343,65 @@ const App: React.FC = () => {
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
 
       <div className={containerClass}>
-        {/* Game Canvas */}
-        <GameCanvas
-          onScoreChange={setScore}
-          onPhaseChange={setPhase}
-          onBossInfo={setBossInfo}
-          orientation={orientation}
-        />
+        {/* Game Canvas - Switch based on mode */}
+        {phase === GamePhase.ENDLESS_RUNNER || gameStateRef.current.gameMode === 'ENDLESS_RUNNER' ? (
+          <RunnerGameCanvas
+            onScoreChange={setScore}
+            onPhaseChange={setPhase}
+            onBossInfo={setBossInfo}
+            onLevelChange={setCurrentRunnerLevel}
+            orientation={orientation}
+          />
+        ) : (
+          <GameCanvas
+            onScoreChange={setScore}
+            onPhaseChange={setPhase}
+            onBossInfo={setBossInfo}
+            orientation={orientation}
+          />
+        )}
 
         {/* HUD - only during gameplay */}
-        {(phase === GamePhase.RUNNING || phase === GamePhase.BOSS_FIGHT) && <HUD />}
+        {(phase === GamePhase.RUNNING || phase === GamePhase.BOSS_FIGHT) && gameStateRef.current.gameMode !== 'ENDLESS_RUNNER' && <HUD />}
+
+        {/* ENDLESS RUNNER HUD - Soldier count */}
+        {gameStateRef.current.gameMode === 'ENDLESS_RUNNER' && (phase === GamePhase.RUNNING || phase === GamePhase.BOSS_FIGHT || phase === GamePhase.ENDLESS_RUNNER) && (
+          <div className="absolute top-6 left-6 z-20 pointer-events-none">
+            <div className="flex flex-col items-start gap-2">
+              {/* Soldier Count */}
+              <div className="bg-black/70 backdrop-blur-sm border-2 border-yellow-400 px-4 py-2 shadow-[0_0_15px_rgba(250,204,21,0.4)]">
+                <div className="text-xs text-yellow-300 uppercase tracking-widest font-bold">Asker Sayısı</div>
+                <div className="text-3xl font-black text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]">
+                  🏃 {score}
+                </div>
+              </div>
+
+              {/* Level Indicator */}
+              <div className="bg-black/70 backdrop-blur-sm border-2 border-cyan-400 px-4 py-2 shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                <div className="text-xs text-cyan-300 uppercase tracking-widest font-bold">Level</div>
+                <div className="text-2xl font-black text-cyan-400 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]">
+                  {currentRunnerLevel} / 4
+                </div>
+              </div>
+
+              {/* Boss HP during boss fight */}
+              {bossInfo && phase === GamePhase.BOSS_FIGHT && (
+                <div className="bg-black/70 backdrop-blur-sm border-2 border-red-500 px-4 py-2 shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+                  <div className="text-xs text-red-300 uppercase tracking-widest font-bold">{bossInfo.name}</div>
+                  <div className="w-32 h-3 bg-gray-800 rounded-full overflow-hidden mt-1">
+                    <div
+                      className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-200"
+                      style={{ width: `${(bossInfo.currentHp / bossInfo.maxHp) * 100}%` }}
+                    />
+                  </div>
+                  <div className="text-sm text-red-400 font-mono mt-1">
+                    {bossInfo.currentHp} / {bossInfo.maxHp}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Orientation Toggle */}
         <div className="absolute top-6 right-6 z-20 pointer-events-auto">
