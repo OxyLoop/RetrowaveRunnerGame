@@ -4,7 +4,7 @@
  */
 
 export interface CrowdRunnerState {
-    status: 'MENU' | 'RUNNING' | 'GAMEOVER';
+    status: 'MENU' | 'RUNNING' | 'BOSS' | 'VICTORY' | 'GAMEOVER';
     distance: number;        // Forward progress
     playerX: number;         // Left/right position
     soldierCount: number;    // Army size (starts at 5)
@@ -13,18 +13,26 @@ export interface CrowdRunnerState {
     weaponDamage: number;
     score: number;
     wave: number;
+    xp: number;          // Experience from kills
+    maxXp: number;       // XP needed for next weapon level
+    bossHp: number;      // Boss health
+    bossMaxHp: number;   // Boss max health
 }
 
 export const crowdState: CrowdRunnerState = {
     status: 'MENU',
     distance: 0,
     playerX: 0,
-    soldierCount: 1,         // Start with 1 soldier
+    soldierCount: 1,
     ammo: 50,
     weaponLevel: 1,
     weaponDamage: 3,
     score: 0,
     wave: 1,
+    xp: 0,
+    maxXp: 100,
+    bossHp: 2000,
+    bossMaxHp: 2000,
 };
 
 export const FIRE_RATE = 5;
@@ -37,12 +45,14 @@ export const resetCrowdGame = () => {
     crowdState.status = 'MENU';
     crowdState.distance = 0;
     crowdState.playerX = 0;
-    crowdState.soldierCount = 1;
+    crowdState.soldierCount = 5;
     crowdState.ammo = 80;
     crowdState.weaponLevel = 1;
     crowdState.weaponDamage = 3;
     crowdState.score = 0;
     crowdState.wave = 1;
+    crowdState.xp = 0;
+    crowdState.maxXp = 100;
 };
 
 export const startCrowdGame = () => {
@@ -76,10 +86,38 @@ export const upgradeWeapon = () => {
     }
 };
 
-export const increaseDamage = (amount: number) => {
-    crowdState.weaponDamage += amount;
+export const addXp = (amount: number) => {
+    crowdState.xp += amount;
+
+    // Level up if we have room
+    if (crowdState.weaponLevel < 5 && crowdState.xp >= crowdState.maxXp) {
+        crowdState.xp -= crowdState.maxXp;
+        crowdState.maxXp = Math.floor(crowdState.maxXp * 1.5); // Increase requirement
+        upgradeWeapon();
+        return true; // Leveled up
+    }
+    return false;
 };
 
 export const addScore = (amount: number) => {
     crowdState.score += amount;
+};
+
+// Boss Arena Functions
+export const triggerBoss = () => {
+    crowdState.status = 'BOSS';
+    crowdState.bossHp = 2000;
+    crowdState.bossMaxHp = 2000;
+};
+
+export const triggerVictory = () => {
+    crowdState.status = 'VICTORY';
+    crowdState.score += 5000; // Boss kill bonus
+};
+
+export const damageBoss = (amount: number) => {
+    crowdState.bossHp = Math.max(0, crowdState.bossHp - amount);
+    if (crowdState.bossHp <= 0) {
+        triggerVictory();
+    }
 };

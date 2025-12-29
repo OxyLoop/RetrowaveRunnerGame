@@ -28,7 +28,7 @@ const Enemies: React.FC = () => {
 
         const now = Date.now();
         const level = getLevelConfig(gs.currentLevel);
-        const spawnInterval = 800 / level.spawnRate; // Faster spawning
+        const spawnInterval = 550 / level.spawnRate; // Much Faster spawning (was 800)
 
         // Spawn enemies
         if (now - lastSpawnTime > spawnInterval) {
@@ -70,8 +70,8 @@ const Enemies: React.FC = () => {
                         vy: 0,
                         vz: ENEMY_PROJECTILE_SPEED,
                         damage: ENEMY_PROJECTILE_DAMAGE,
-                        color: COLORS.NEON_RED,
-                        size: 0.3,
+                        color: "#ff3300", // Bright Orange-Red
+                        size: 0.6, // Much bigger (was 0.3)
                         piercing: false,
                         explosive: false,
                         fromEnemy: true,
@@ -290,35 +290,35 @@ const EnemyMesh: React.FC<{ enemy: Enemy }> = ({ enemy }) => {
         return (
             <group ref={groupRef} position={[enemy.x, enemy.y, enemy.z]}>
                 {/* Center Core */}
-                <Sphere args={[0.3, 8, 8]}>
+                <Sphere args={[0.6, 8, 8]}>
                     <meshStandardMaterial color="#222" emissive={color} emissiveIntensity={0.5} />
                 </Sphere>
                 {/* Propeller Arms */}
-                <Box args={[1.2, 0.1, 0.1]} rotation={[0, Math.PI / 4, 0]}>
+                <Box args={[2.4, 0.2, 0.2]} rotation={[0, Math.PI / 4, 0]}>
                     <meshStandardMaterial color="#444" />
                 </Box>
-                <Box args={[1.2, 0.1, 0.1]} rotation={[0, -Math.PI / 4, 0]}>
+                <Box args={[2.4, 0.2, 0.2]} rotation={[0, -Math.PI / 4, 0]}>
                     <meshStandardMaterial color="#444" />
                 </Box>
                 {/* Rotors */}
                 {[0, 1, 2, 3].map(i => {
                     const angle = (Math.PI / 2) * i + Math.PI / 4;
-                    const r = 0.5;
+                    const r = 1.0;
                     return (
-                        <Cylinder key={i} args={[0.2, 0.2, 0.05, 8]} position={[Math.cos(angle) * r, 0.1, Math.sin(angle) * r]}>
+                        <Cylinder key={i} args={[0.4, 0.4, 0.1, 8]} position={[Math.cos(angle) * r, 0.2, Math.sin(angle) * r]}>
                             <meshBasicMaterial color="#666" />
                         </Cylinder>
                     );
                 })}
                 {/* Eye */}
-                <Sphere args={[0.15, 8, 8]} position={[0, 0, 0.25]}>
+                <Sphere args={[0.3, 8, 8]} position={[0, 0, 0.5]}>
                     <meshBasicMaterial color={COLORS.NEON_RED} toneMapped={false} />
                 </Sphere>
                 {/* Health bar */}
-                <Box args={[1.2, 0.1, 0.1]} position={[0, 0.8, 0]}>
+                <Box args={[2.4, 0.2, 0.2]} position={[0, 1.2, 0]}>
                     <meshBasicMaterial color="#330000" />
                 </Box>
-                <Box args={[1.2 * healthPercent, 0.1, 0.1]} position={[(healthPercent - 1) * 0.6, 0.8, 0]}>
+                <Box args={[2.4 * healthPercent, 0.2, 0.2]} position={[(healthPercent - 1) * 1.2, 1.2, 0]}>
                     <meshBasicMaterial color={color} toneMapped={false} />
                 </Box>
             </group>

@@ -100,6 +100,31 @@ const App: React.FC = () => {
 
             {/* Mode Selection */}
             <div className="flex flex-col gap-4 mb-6 w-full max-w-xs">
+
+              {/* Endless Runner Mode */}
+              <button
+                onClick={() => {
+                  gameStateRef.current.gameMode = 'ENDLESS_RUNNER';
+                  gameStateRef.current.hyperCasual = undefined;
+                  setPhase(GamePhase.ENDLESS_RUNNER);
+                  // Wait for RunnerGameCanvas to mount and expose startRunnerGame
+                  setTimeout(() => {
+                    if ((window as any).startRunnerGame) {
+                      (window as any).startRunnerGame();
+                    }
+                  }, 100);
+                }}
+                className="group relative px-6 py-4 bg-transparent border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black rounded-sm font-bold transition-all duration-300 hover:shadow-[0_0_30px_rgba(250,204,21,0.6)]"
+              >
+                <div className="flex items-center justify-center gap-3">
+                  <span className="text-2xl">🏃</span>
+                  <div className="text-left">
+                    <div className="text-lg">ENDLESS RUNNER</div>
+                    <div className="text-xs opacity-70">Sonsuz Koşu, Boss Savaşları</div>
+                  </div>
+                </div>
+              </button>
+
               {/* Shooter Mode */}
               <button
                 onClick={() => {
@@ -140,51 +165,6 @@ const App: React.FC = () => {
                 <div className="text-xs text-cyan-200 mt-1 pl-2">Düşman Vur • Silah Topla</div>
               </button>
 
-              {/* Hyper Casual Mode */}
-              <button
-                onClick={() => {
-                  gameStateRef.current.gameMode = 'HYPER_CASUAL';
-                  gameStateRef.current.hyperCasual = {
-                    soldierCount: 10,
-                    gatesCleared: 0,
-                    isFinished: false,
-                  };
-                  handleStart();
-                }}
-                className="group relative px-6 py-4 bg-transparent border-2 border-fuchsia-400 text-fuchsia-400 hover:bg-fuchsia-400 hover:text-black rounded-sm font-bold transition-all duration-300 hover:shadow-[0_0_30px_rgba(217,70,239,0.6)]"
-              >
-                <div className="flex items-center justify-center gap-3">
-                  <span className="text-2xl">🎲</span>
-                  <div className="text-left">
-                    <div className="text-lg">HYPER CASUAL</div>
-                    <div className="text-xs opacity-70">Matematik Kapıları, Asker Ordusu</div>
-                  </div>
-                </div>
-              </button>
-
-              {/* Endless Runner Mode */}
-              <button
-                onClick={() => {
-                  gameStateRef.current.gameMode = 'ENDLESS_RUNNER';
-                  gameStateRef.current.hyperCasual = undefined;
-                  setPhase(GamePhase.ENDLESS_RUNNER);
-                  // Wait for RunnerGameCanvas to mount and expose startRunnerGame
-                  setTimeout(() => {
-                    if ((window as any).startRunnerGame) {
-                      (window as any).startRunnerGame();
-                    }
-                  }, 100);
-                }}
-                className="group relative px-6 py-4 bg-transparent border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black rounded-sm font-bold transition-all duration-300 hover:shadow-[0_0_30px_rgba(250,204,21,0.6)]"
-              >
-                <div className="flex items-center justify-center gap-3">
-                  <span className="text-2xl">🏃</span>
-                  <div className="text-left">
-                    <div className="text-lg">ENDLESS RUNNER</div>
-                    <div className="text-xs opacity-70">Sonsuz Koşu, Boss Savaşları</div>
-                  </div>
-                </div>
-              </button>
             </div>
 
             <p className="text-gray-500 text-xs font-mono">

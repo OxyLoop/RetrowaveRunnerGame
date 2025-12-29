@@ -543,8 +543,184 @@ const GameScene: React.FC<GameCanvasProps> = (props) => {
   );
 };
 
+// ============================================
+// ACTION MUSIC (Shooter Mode)
+// ============================================
+const audioCtx = typeof window !== 'undefined' ? new (window.AudioContext || (window as any).webkitAudioContext)() : null;
+
+const ActionMusic = ({ active }: { active: boolean }) => {
+  const intervalRef = useRef<any>(null);
+  const nodesRef = useRef<AudioNode[]>([]);
+
+  useEffect(() => {
+    if (!active || !audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.12;
+    masterGain.connect(audioCtx.destination);
+    nodesRef.current.push(masterGain);
+
+    const BPM = 135;
+    const beatDuration = 60 / BPM;
+    const noteDuration = beatDuration / 4; // 16th notes
+    let step = 0;
+    let nextNoteTime = audioCtx.currentTime;
+
+    // One-time buffer creation for noise (Snare/HiHat)
+    const bufferSize = audioCtx.sampleRate * 2;
+    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+    const playKick = (time: number) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.frequency.setValueAtTime(150, time);
+      osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
+      gain.gain.setValueAtTime(0.8, time);
+      gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(time);
+      osc.stop(time + 0.5);
+    };
+
+    const playSnare = (time: number) => {
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = noiseBuffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.value = 1000;
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.4, time);
+      gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      noise.start(time);
+      noise.stop(time + 0.2);
+    };
+
+    const playHiHat = (time: number, open: boolean) => {
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = noiseBuffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.value = 5000;
+      const gain = audioCtx.createGain();
+      const vol = open ? 0.15 : 0.05;
+      const dur = open ? 0.1 : 0.05;
+      gain.gain.setValueAtTime(vol, time);
+      gain.gain.exponentialRampToValueAtTime(0.01, time + dur);
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      noise.start(time);
+      noise.stop(time + dur);
+    };
+
+    const playBass = (time: number, freq: number) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(600, time);
+      filter.frequency.exponentialRampToValueAtTime(100, time + 0.15);
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.25, time);
+      gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      osc.start(time);
+      osc.stop(time + 0.2);
+    };
+
+    const playLead = (time: number, freq: number) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.08, time);
+      gain.gain.exponentialRampToValueAtTime(0.01, time + 0.4);
+
+      // Simple delay effect
+      const delay = audioCtx.createDelay();
+      delay.delayTime.value = 0.3;
+      const delayGain = audioCtx.createGain();
+      delayGain.gain.value = 0.4;
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+      gain.connect(delay);
+      delay.connect(delayGain);
+      delayGain.connect(masterGain);
+      delayGain.connect(delay); // Feedback loop! careful
+
+      osc.start(time);
+      osc.stop(time + 0.4);
+    };
+
+    const scheduler = () => {
+      while (nextNoteTime < audioCtx.currentTime + 0.1) {
+        // KICK: 1, 5, 9, 13 (Quarter notes)
+        if (step % 4 === 0) playKick(nextNoteTime);
+
+        // SNARE: 5, 13 (2 and 4)
+        if (step % 16 === 4 || step % 16 === 12) playSnare(nextNoteTime);
+
+        // HIHAT: Every step (16th notes), accent offbeats
+        playHiHat(nextNoteTime, step % 2 !== 0);
+
+        // BASS: Driving 16th notes
+        // Am (55) -> F (43.65) -> G (49)
+        let bassNote = 55;
+        if (step % 64 < 32) bassNote = 55; // A
+        else if (step % 64 < 48) bassNote = 43.65; // F
+        else bassNote = 49; // G
+
+        // Offbeat bass accent
+        if (step % 2 !== 0) playBass(nextNoteTime, bassNote);
+        else playBass(nextNoteTime, bassNote * 0.99); // detune slightly
+
+        // LEAD: Sparse melody
+        if (step % 32 === 0) playLead(nextNoteTime, 440); // A4
+        if (step % 32 === 6) playLead(nextNoteTime, 523.25); // C5
+        if (step % 32 === 14) playLead(nextNoteTime, 659.25); // E5
+
+        nextNoteTime += noteDuration;
+        step++;
+      }
+    };
+
+    intervalRef.current = setInterval(scheduler, 25);
+
+    return () => {
+      clearInterval(intervalRef.current);
+      nodesRef.current.forEach(n => { try { n.disconnect() } catch { } });
+    };
+  }, [active]);
+
+  return null;
+};
+
+
 // === MAIN GAME CANVAS ===
 const GameCanvas: React.FC<GameCanvasProps> = (props) => {
+  const [phase, setPhase] = useState(GamePhase.MENU);
+
+  // Sync phase for music
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (gameStateRef.current.phase !== phase) {
+        setPhase(gameStateRef.current.phase);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [phase]);
+
   const initGame = () => {
     resetGame(1);
     startGame();
@@ -554,6 +730,8 @@ const GameCanvas: React.FC<GameCanvasProps> = (props) => {
 
     // Unlock pistol by default
     gameStateRef.current.player.weapons[0].unlocked = true;
+
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   };
 
   const continueToNextLevel = () => {
@@ -648,7 +826,6 @@ const GameCanvas: React.FC<GameCanvasProps> = (props) => {
     <div
       className="w-full h-full bg-[#170b29] outline-none cursor-crosshair"
       tabIndex={0}
-      onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onClick={() => {
         // Click to shoot
@@ -660,6 +837,7 @@ const GameCanvas: React.FC<GameCanvasProps> = (props) => {
         }
       }}
     >
+      <ActionMusic active={phase === GamePhase.RUNNING || phase === GamePhase.BOSS_FIGHT} />
       <Canvas shadows camera={{ position: [0, 6, 12], fov: 60 }}>
         <GameScene {...props} />
       </Canvas>

@@ -97,22 +97,43 @@ const Projectiles: React.FC = () => {
         <group>
             {renderProjectiles.map((p) => (
                 <group key={p.id} position={[p.x, p.y, p.z]}>
-                    {/* Main projectile - BIGGER */}
-                    <Sphere args={[p.size * 1.5, 8, 8]}>
-                        <meshBasicMaterial color={p.color} toneMapped={false} />
-                    </Sphere>
-                    {/* Glow */}
-                    <Sphere args={[p.size * 3, 6, 6]}>
-                        <meshBasicMaterial color={p.color} transparent opacity={0.4} toneMapped={false} />
-                    </Sphere>
-                    {/* Trail */}
-                    <Cylinder
-                        args={[p.size * 0.8, p.size * 0.4, p.fromEnemy ? 1 : 2, 4]}
-                        position={[0, 0, p.fromEnemy ? -0.6 : 1]}
-                        rotation={[Math.PI / 2, 0, 0]}
-                    >
-                        <meshBasicMaterial color={p.color} transparent opacity={0.6} toneMapped={false} />
-                    </Cylinder>
+                    {p.fromEnemy ? (
+                        // === ENEMY PROJECTILE (LASER BOLT) ===
+                        <group rotation={[Math.PI / 2, 0, 0]}>
+                            {/* Core Bolt */}
+                            <Cylinder args={[p.size * 0.4, p.size * 0.4, p.size * 5, 8]}>
+                                <meshBasicMaterial color="#ffcc00" toneMapped={false} />
+                            </Cylinder>
+                            {/* Glowing Aura Outer */}
+                            <Cylinder args={[p.size * 0.8, p.size * 0.8, p.size * 6, 8]}>
+                                <meshBasicMaterial color={p.color} transparent opacity={0.6} toneMapped={false} />
+                            </Cylinder>
+                            {/* Front Glow */}
+                            <Sphere args={[p.size, 8, 8]} position={[0, -p.size * 2, 0]}>
+                                <meshBasicMaterial color="#ffffff" toneMapped={false} />
+                            </Sphere>
+                        </group>
+                    ) : (
+                        // === PLAYER PROJECTILE ===
+                        <group>
+                            {/* Main projectile - BIGGER */}
+                            <Sphere args={[p.size * 1.5, 8, 8]}>
+                                <meshBasicMaterial color={p.color} toneMapped={false} />
+                            </Sphere>
+                            {/* Glow */}
+                            <Sphere args={[p.size * 3, 6, 6]}>
+                                <meshBasicMaterial color={p.color} transparent opacity={0.4} toneMapped={false} />
+                            </Sphere>
+                            {/* Trail */}
+                            <Cylinder
+                                args={[p.size * 0.8, p.size * 0.4, 2, 4]}
+                                position={[0, 0, 1]}
+                                rotation={[Math.PI / 2, 0, 0]}
+                            >
+                                <meshBasicMaterial color={p.color} transparent opacity={0.6} toneMapped={false} />
+                            </Cylinder>
+                        </group>
+                    )}
                 </group>
             ))}
         </group>

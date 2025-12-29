@@ -4,39 +4,39 @@ import { EnemyType, Enemy } from './index';
 export const ENEMY_CONFIGS: Record<EnemyType, Omit<Enemy, 'id' | 'x' | 'y' | 'z' | 'isActive' | 'lastShot' | 'animOffset'>> = {
     [EnemyType.DRONE]: {
         type: EnemyType.DRONE,
-        health: 30,
-        maxHealth: 30,
-        damage: 10,
+        health: 80, // Was 30
+        maxHealth: 100,
+        damage: 15,
         speed: 12,
-        points: 10,
+        points: 20,
         canShoot: true,
         shootCooldown: 2000,
     },
     [EnemyType.TANK]: {
         type: EnemyType.TANK,
-        health: 200,
-        maxHealth: 200,
+        health: 400, // Was 200
+        maxHealth: 800,
         damage: 20,
         speed: 5,
-        points: 30,
+        points: 80,
         canShoot: true,
         shootCooldown: 3000,
     },
     [EnemyType.GLITCH]: {
         type: EnemyType.GLITCH,
-        health: 80,
-        maxHealth: 80,
+        health: 1700, // Was 80
+        maxHealth: 250,
         damage: 25,
         speed: 8,
-        points: 25,
+        points: 50,
         canShoot: true,
         shootCooldown: 1500,
     },
     [EnemyType.BOSS]: {
         type: EnemyType.BOSS,
-        health: 1500,
-        maxHealth: 1500,
-        damage: 30,
+        health: 6000,
+        maxHealth: 6000,
+        damage: 50,
         speed: 0,
         points: 500,
         canShoot: true,
@@ -44,31 +44,31 @@ export const ENEMY_CONFIGS: Record<EnemyType, Omit<Enemy, 'id' | 'x' | 'y' | 'z'
     },
     [EnemyType.ASTEROID]: {
         type: EnemyType.ASTEROID,
-        health: 200,
-        maxHealth: 200,
+        health: 300, // Was 200
+        maxHealth: 300,
         damage: 40,
         speed: 0,
-        points: 5,
+        points: 10,
         canShoot: false,
         shootCooldown: 0,
     },
     [EnemyType.PHANTOM]: {
         type: EnemyType.PHANTOM,
-        health: 50,
-        maxHealth: 50,
+        health: 150, // Was 50
+        maxHealth: 150,
         damage: 35,
         speed: 18,              // Very fast
-        points: 40,
+        points: 60,
         canShoot: false,        // Melee attacker
         shootCooldown: 0,
     },
     [EnemyType.BOMBER]: {
         type: EnemyType.BOMBER,
-        health: 150,
-        maxHealth: 150,
+        health: 400, // Was 150
+        maxHealth: 400,
         damage: 25,             // Contact damage
         speed: 10,
-        points: 35,
+        points: 70,
         canShoot: false,
         shootCooldown: 0,
         // Note: Explosion damage is handled separately in Enemies.tsx
